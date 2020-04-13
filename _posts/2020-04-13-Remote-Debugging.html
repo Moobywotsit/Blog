@@ -1,0 +1,102 @@
+---
+layout: post
+title: "Remote Debugging"
+subtitle: "Remote Debugging is the act of attaching your IDE to a running program be that locally or on another machine."
+date: 2020-04-13 12:00:00
+background: '/img/posts/RemoteDebugging/DebugPoint.png'
+---
+
+<h2 class="section-heading">Introduction To Remote Debugging</h2>
+<p>Remote Debugging is the act of attaching your IDE to a running program be that locally or on another machine. Once you have attached your IDE you can then add breakpoints and anything else you may want to do when debugging a program. I will cover what this might be in a later post. If your just here for a tutorial on remote debugging with an example of this using java and IntelliJ then skip to the “<i>>How do I do that</i>” section.</p>
+
+<h2 class="section-heading">Why Do I Care?</h2>
+<p>You can see why this would be useful, say for example you are working on a complicated piece of software that is highly configurable and the unit tests that are “covering” this code are not fully exhaustive. You deploy your fancy new feature and damn it doesn’t work there is no way you would be able to reproduce your tiny error in the mountain of spaghetti that you have been maintaining. Or perhaps your application has broken in production and you cannot regardless of how hard you try work out why it has broken. How useful would it be to just pop a breakpoint on your code hit that button on your UI or run that script and have the exact running state of the program be debug-able?</p>
+
+<h2 class="section-heading">When Has It Been Useful For You?</h2>
+<p>For those that don’t know I work For a large tech company that produces banking compliance software so we work with large complex software suites that are built from lots of free-standing smaller applications (notice I said smaller, not small, each application is vastly complex in its own right). All of this equates to bugs that are hard to find, you have to work out which component it's failing in; is it in a component that is being used as a library for another component, does that component have the new version of the other component you have built inside it. Then this is all complemented by an equally complicated build process that grows and changes with each new customer and their highly customised requirements. It’s a nightmare. However, using remote debugging (where you can, we will come to that later) makes this whole process much easier and causes much less cognitive overload. Furthermore, it can be used when an application is misbehaving in production to step through and see what your pesky client has been doing to break your beautiful fall prove applications.</p>
+<p>Just the other week we were developing features for A component that we were unfamiliar with and we had to Integrate a new datatype that the rest of the program could seamlessly use, this meant that we had to work out exactly how and where and how the existing datatype was being used. Now, of course, the first thing we did was follow the flow of the program as we understood it thought the code, and added our new model to all the place that we could find which needed it, added our unit tests and ran it to see what happened. Another thing I should explain about the components that we work on only a handful of them have “dev” modes, meaning only a handful of them can be run in an IDE. Now this first attempt was pretty good, we got quite far with nothing braking however the desired output was not obtained, this was when we broke out the remote debugger. Having got a build of the component working in the end to end solution we could then attach a debugger to it with all the configuration that comes with that solution. It is obvious the benefit of this, no mocked services in tests no fabricated configuration exactly what will run in production, leading to us finding an ‘if’ statement that was missing a check for our new type of object. I cannot express how much time this saved us due to the way the configuration in the tests was set up this would not have been easy to test for. (We added a new test to cover this case for the future of course).</p>
+
+<h2 class="section-heading">How Do I Do That?</h2>
+<p>Here I will layout and example of using IntelliJ as your debugger on a java application on the same machine. However, this can be done with most debuggers and most languages and of course over the network, hence the “remote” debugging.</p>
+<p>First thing first you must write a program that you can debug, here is the code I used for this demo. Note, the input is to pause the console window, so we have time to attach the remote debugger because it must be running to attach.</p>
+
+<pre><code style="font-size: 10pt;" class="java">import java.io.BufferedReader;
+    import java.io.IOException;
+    import java.io.InputStreamReader;
+    
+    public class RemoteExampleMain {
+        private static String PRODUCTION = "production";
+        private static String DEV = "dev";
+    
+        public static void main(String[] args) throws IOException {
+            //Enter data using BufferReader
+            BufferedReader reader =
+                    new BufferedReader(new InputStreamReader(System.in));
+    
+            System.out.println("Enter a Message and press enter: \n");
+    
+            // Reading data using readLine
+            String input = reader.readLine();
+    
+            if(args[0].equals(PRODUCTION)){
+                //Do some production code
+                System.out.println("I'm in production mode and you said: " + input);
+            }else if(args[0].equals(DEV)){
+                //Do some Dev only code
+                System.out.println("I'm in dev mode and you said: " + input);
+            }else{
+                //PANIC
+                System.out.println("OH NO IM IN NO MODE and you said: " + input);
+            }
+        }
+    }
+    
+</code></pre>
+
+<p>As you can see this code as a very primitive “configuration” that you can supply via a command-line argument now of course for this you could just change your IntelliJ run configuration to pass in “production” instead of “dev”, in normal circumstances that is exactly what you would want to do if not write a unit tests that passes each of them in. However, imagine you had literally thousands of configuration options each interacting with one another if it has not been incrementally tested throughout its life cycle then there is no way you would be able to test every option with each other option. So, for the sake of this demo I have created a run configuration that emulates a dev mode:</p>
+<img class="img-fluid" src="/img/posts/RemoteDebugging/DevModeConfig.png" alt="Dev mode config">
+<span class="caption text-muted">Intellij Dev Config</span>
+
+<p>As you can see above this is a simple run config that passes “dev” in as the first program argument as per the code above this means it will go down the dev code path. When you run this on the code that was supplied at the top you get the output of:</p>
+<img class="img-fluid" src="/img/posts/RemoteDebugging/DevmodeOutput.png" alt="Dev mode output">
+<span class="caption text-muted">Dev Mode Output</span>
+
+<p>So next is running it in debug mode, to do this we will, of course, need to run the program outside of IntelliJ, we will do this using the command-line compiler and then run it using the java command. This means going to the directory where your programs .java file is so “myprogram.java” and running the commands:</p>
+
+<pre><code class="plaintext">Javac myprogram.java
+Java myprogram.java production
+</code></pre>
+
+<p>The first command will compile your code the second will run it. You should see the output window looking something like this:</p>
+<img class="img-fluid" src="/img/posts/RemoteDebugging/productionModeOutpu.png" alt="Production Mode Output">
+<span class="caption text-muted">Production Mode Output</span>
+
+<p>Now that we have run it in both dev and production mode next thing is running it in remote debug mode.</p>
+<p>The first thing that needs to be done is we need to set up a remote debug configuration in Intellij that we can use to attach to the running program. This is under the run configurations option under remote when you add a new run config. The config for this looks as below:</p>
+<img class="img-fluid" src="/img/posts/RemoteDebugging/RemoteDebugConfig.png" alt="Remote debug config">
+<span class="caption text-muted">Remote Debug Config</span>
+
+<p>In this instance, because we are running on the same machine we don’t have to worry about the port. However, if you were debugging something that is running on a different machine you would have to make sure that the port you specify is open and can be connected to. Once this is created you need to copy the section “Command line arguments for remove JVM”, we will have to add this to our command that we use to run our program.</p>
+<P>Next, we want to go back to the command line and run the command:</P>
+<pre><code class="plaintext">Java myprogram.java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 production</code></pre>
+
+<p>When we get to the enter your message section you want to make sure you don’t enter anything yet. Now head back to Intellij and hit the debug button with your new remote debug configuration you should see the message:</p>
+<img class="img-fluid" src="/img/posts/RemoteDebugging/ConnectedToVM.png" alt="Remote debug config">
+<span class="caption text-muted">Connected To VM</span>
+
+<p>Once you see that you are ready to add a debug point, put one inside the production if conditional like below:</p>
+<img class="img-fluid" src="/img/posts/RemoteDebugging/DebugPoint.png" alt="Remote debug config">
+<span class="caption text-muted">Remote Debug Point</span>
+
+<p>Now type in your message to the console window where you ran you java program from and hit enter, IntelliJ should now have hit your debug point.</p>
+<img class="img-fluid" src="/img/posts/RemoteDebugging/DebugPointHit.png" alt="Remote debug config">
+<span class="caption text-muted">Remote Debug Point Hit</span>
+
+<p>You can now use any debug tools you want like seeing the variable values in the variables tab or seeing all the running threads or even the watch tool. Now hit f9 to continue running your program and head back to the command window where you should see your final output.</p>
+<img class="img-fluid" src="/img/posts/RemoteDebugging/DebugModeConsole.png" alt="Remote debug config">
+<span class="caption text-muted">Remote Debug Mode Output</span>
+
+<p>Congratulations you have now performed your first remote debug!</p>
+
+<h2 class="section-heading">Conclusion</h2>
+<p>Now you know why you would use remote debugging, when I have used remote debugging in a professional environment and how to use it, all be it in a specific use case. Now go forth and fix all the bugs! Check out the blog post about unit testing to try and reduce the amount you need to use a remote debugger. <a href="">Coming soon.</a></p>
