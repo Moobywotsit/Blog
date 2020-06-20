@@ -49,8 +49,7 @@ background: '/img/posts/RemoteDebugging/DebugPoint.png'
                 System.out.println("OH NO IM IN NO MODE and you said: " + input);
             }
         }
-    }
-    
+    }   
 </code></pre>
 
 <p>As you can see this code as a very primitive “configuration” that you can supply via a command-line argument now of course for this you could just change your IntelliJ run configuration to pass in “production” instead of “dev”, in normal circumstances that is exactly what you would want to do if not write a unit tests that passes each of them in. However, imagine you had literally thousands of configuration options each interacting with one another if it has not been incrementally tested throughout its life cycle then there is no way you would be able to test every option with each other option. So, for the sake of this demo I have created a run configuration that emulates a dev mode:</p>
@@ -58,7 +57,7 @@ background: '/img/posts/RemoteDebugging/DebugPoint.png'
 <span class="caption text-muted">Intellij Dev Config</span>
 
 <p>As you can see above this is a simple run config that passes “dev” in as the first program argument as per the code above this means it will go down the dev code path. When you run this on the code that was supplied at the top you get the output of:</p>
-<img class="img-fluid" src="/img/posts/RemoteDebugging/DevmodeOutput.png" alt="Dev mode output">
+<img class="img-fluid" src="/img/posts/RemoteDebugging/DevModeOutput.png" alt="Dev mode output">
 <span class="caption text-muted">Dev Mode Output</span>
 
 <p>So next is running it in debug mode, to do this we will, of course, need to run the program outside of IntelliJ, we will do this using the command-line compiler and then run it using the java command. This means going to the directory where your programs .java file is so “myprogram.java” and running the commands:</p>
@@ -68,7 +67,7 @@ Java myprogram.java production
 </code></pre>
 
 <p>The first command will compile your code the second will run it. You should see the output window looking something like this:</p>
-<img class="img-fluid" src="/img/posts/RemoteDebugging/productionModeOutpu.png" alt="Production Mode Output">
+<img class="img-fluid" src="/img/posts/RemoteDebugging/productionModeOutput.png" alt="Production Mode Output">
 <span class="caption text-muted">Production Mode Output</span>
 
 <p>Now that we have run it in both dev and production mode next thing is running it in remote debug mode.</p>

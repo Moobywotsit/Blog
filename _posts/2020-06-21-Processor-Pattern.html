@@ -1,0 +1,174 @@
+---
+layout: post
+title: "Processor Pattern"
+subtitle: "The Processor Pattern is a pattern i encountered in a proffessinal codebase and found it intresting"
+date: 2020-04-13 12:00:00
+background: '/img/posts/ProcessorPattern/processor-bg.png'
+---
+
+<h2 class="section-heading">Introduction To The Processor Pattern</h2>
+<p>I have not seen this pattern referenced anywhere on the internet which probably means it’s wrong or confusing but, I like it and I think it is at least interesting. I encountered it in a professional codebase and thought it worked well so I will share it here.</p>
+
+<h2 class="section-heading">What Is The Processor Pattern And Why Do I Care</h2>
+<p>The General idea behind this pattern is that you set up a processor which has some logic to process some specific object and maybe mod the object if possible or preferable accumulate some output on the processor that is available to get at any time. This is super useful for dealing with streams of data where you might not know how much is coming in and you want to count it or check each one for something specific. I personally have used to deal with data coming out of a HBase scan, HBase is a NoSQL database that uses scans with filters to return you data. So I attached a function to the scan which is called per row when HBase finds a row that matches your filter, this function uses a processor that does further filtering on the rows returned. In this case, it was used for security to decide if the current user has permission to view the data returned by a view.</p>
+
+<h2 class="section-heading">Examples</h2>
+<p>I will start with StringProcessor which is perhaps not something you would do in practice cause well Generics exist right but let’s keep those out of this first example.</p>
+
+<pre><code style="font-size: 10pt;" class="java">    
+package uk.co.reptilecoding.processors;
+
+public interface StringProcessor
+{
+    void process(String string);
+}
+</code></pre>
+
+<p>As you can see we always start with an interface because each processor needs to do something specific that’s the point, in this cause its super simple just one method. Now we will write an implementation for this processor that will concatenate strings together.</p>
+
+<pre><code style="font-size: 10pt;" class="java">    
+package uk.co.reptilecoding.processors;
+
+public class ConcatenatingStringProcessor implements StringProcessor {
+    String finalString = "";
+
+    public String getFinalString(){
+        return finalString;
+    }
+
+    public void process(String string) {
+        finalString = finalString.concat(string);
+    }
+}
+</code></pre>
+
+<p>Super simple again so we store on the instance of the ConcatenatingStringProcessor a ‘finalString’ which we use to store the accumulation of all the strings concatenated together and we provided a getter to get that final string out of the processor.</p>
+
+<pre><code style="font-size: 10pt;" class="java">
+package uk.co.reptilecoding;
+
+public class ProcessorExamplesRunner {
+    public static void main(String[] args) {
+        ProcessorExamples examples = new ProcessorExamples();
+
+        examples.runStringConcatProcessor();
+    }
+}
+
+public class ProcessorExamplesRunner {
+    public void runStringConcatProcessor(){
+        ConcatenatingStringProcessor stringProcessor = new ConcatenatingStringProcessor();
+
+        String[] strings = new String[10];
+        strings[0] = "this ";
+        strings[1] = "is ";
+        strings[2] = "an ";
+        strings[3] = "example ";
+        strings[4] = "of ";
+        strings[5] = "how ";
+        strings[6] = "this ";
+        strings[7] = "particular ";
+        strings[8] = "processor ";
+        strings[9] = "works.";
+
+        //You can imagine this not being a fabricated string but perhaps some list that
+        //gets populated from an external stream of data which you want to processed
+        //when it comes in
+        for(String string : strings) {
+            stringProcessor.process(string);
+        }
+
+        System.out.print(stringProcessor.getFinalString());
+    }
+
+}
+</code></pre>
+
+<p>So you could imagine rather than a for loop over an array of strings that could be out of a text box that a user is typing in and each chunk of data goes through the processor adding that string and at the end, you have the full input. This outputs, yup you guessed it: <i>this is an example of how this particular processor works.</i></p>
+
+<p>So I spoke about Generics before let’s make a processor that can take any object and process it, we will do it in the context of a database row.</p>
+
+<pre><code style="font-size: 10pt;" class="java">    
+package uk.co.reptilecoding.processors;
+
+public interface DatabaseRowProcessor&lt;ROW&gt; {
+
+    public void process(ROW row);
+}  
+</code></pre>
+
+<p>So we can use generics here to send any kind of object through to be processed. For simplicity, we will create a counting processor, it will just count every time you send a row to the processor.</p>
+
+<pre><code style="font-size: 10pt;" class="java">    
+package uk.co.reptilecoding.processors;
+
+public class DatabaseRowCountingProcessor implements DatabaseRowProcessor<String> {
+    long count = 0L;
+
+    public long getCount(){
+        return count;
+    }
+
+    public void process(String s) {
+        if (s != null && !s.equals("")){
+            count++;
+        }
+    }
+}    
+</code></pre>
+
+<p>So you can see in the class declaration I wrote <i>‘DatabaseRowProcessor&lt;String&gt;’</i> this tells the class we are going to be working with strings. Then the process method will just increment that counter stored on the instance of the DatabaseRowProcessor then like before we have the getCount function to get the count at any point in the programme.</p>
+
+<pre><code style="font-size: 10pt;" class="java">     
+public class ProcessorExamplesRunner {
+    public static void main(String[] args) {
+        ProcessorExamples examples = new ProcessorExamples();
+
+        examples.runDatabaseRowCounterProcessor();
+    }
+}
+</code></pre>
+
+<pre><code style="font-size: 10pt;" class="java">
+package uk.co.reptilecoding;
+
+import uk.co.reptilecoding.processors.ConcatenatingStringProcessor;
+import uk.co.reptilecoding.processors.DatabaseRowCountingProcessor;
+import uk.co.reptilecoding.processors.DatabaseRowFilteringProcessor;
+import uk.co.reptilecoding.processors.DatabaseRowProcessor;
+
+public class ProcessorExamples {
+
+    public void runDatabaseRowCounterProcessor(){
+        DatabaseRowCountingProcessor countingProcessor = new DatabaseRowCountingProcessor();
+
+        runDatabaseRowProcessor(countingProcessor);
+
+        System.out.println(countingProcessor.getCount());
+    }
+
+    public void runDatabaseRowProcessor(DatabaseRowProcessor&lt;String&gt; processor){
+        String[] strings = new String[12];
+        strings[0] = "this ";
+        strings[1] = "is ";
+        strings[2] = "an ";
+        strings[3] = "example ";
+        strings[4] = "of ";
+        strings[5] = "how ";
+        strings[6] = "a ";
+        strings[7] = "this ";
+        strings[8] = "processor ";
+        strings[9] = "works.";
+        strings[10] = "";
+
+        for(String string : strings) {
+            processor.process(string);
+        }
+    }
+}
+</code></pre>
+    
+<p>If you run the above code you get the output <i>11</i> which is what you would expect because process is being called for each string and there are 11 strings.</p>
+
+<h2 class="section-heading">Conclusion</h2>
+<p>Now you know why you would use remote debugging, when I have used remote debugging in a professional environment and how to use it, all be it in a specific use case. Now go forth and fix all the bugs! Check out the blog post about unit testing to try and reduce the amount you need to use a remote debugger. <a href="">Coming soon.</a></p>
